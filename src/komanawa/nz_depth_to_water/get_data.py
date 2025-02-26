@@ -137,9 +137,11 @@ def nz_depth_to_water_dump() -> str:
             out_str.append(ds[key].__str__())
     return '\n\n'.join(out_str)
 
+
 acceptable_sources = (
     'auk', 'bop', 'gdc', 'hbrc', 'hrc', 'mdc', 'nrc', 'ncc', 'orc', 'src', 'trc', 'tdc', 'wrc', 'gwrc', 'wcrc',
     'nzgd', 'tcc', 'ecan')
+
 
 def get_nz_depth_to_water(source=None, convert_wl_dtw_flag=False, wl_water_elev_flag=False) -> (
         pd.DataFrame, pd.DataFrame):
@@ -199,11 +201,11 @@ def get_nz_depth_to_water(source=None, convert_wl_dtw_flag=False, wl_water_elev_
                         outdf.loc[np.isclose(outdf[k], ds[k].missing_value), k] = np.nan
                         outdf[k] *= ds[k].scale_factor + ds[k].add_offset
     outmetadata['site_name'] = outmetadata['site_name'].astype(str)
-    outmetadata = outmetadata.set_index('site_name',drop=True)
+    outmetadata = outmetadata.set_index('site_name', drop=True)
     return outmetadata, out_water_level_data,
 
 
-def export_dtw_to_csv(outdir, source=None):
+def export_dtw_to_csv(outdir, source=None, convert_wl_dtw_flag=False, wl_water_elev_flag=False):
     """
     Export the depth to water data to csv files.
 
@@ -212,7 +214,8 @@ def export_dtw_to_csv(outdir, source=None):
     :return:
     """
     print(f'Preparing to export data to csvs in {outdir}')
-    metadata, water_level_data = get_nz_depth_to_water(source)
+    metadata, water_level_data = get_nz_depth_to_water(source, convert_wl_dtw_flag=convert_wl_dtw_flag,
+                                                       wl_water_elev_flag=wl_water_elev_flag)
     outdir = Path(outdir)
     outdir.mkdir(exist_ok=True)
     water_level_data.to_csv(outdir.joinpath('water_level_data.csv'))
@@ -270,5 +273,5 @@ def copy_geotifs(outdir):
 
 
 if __name__ == '__main__':
-     meta, wld = get_nz_depth_to_water('gwrc')
-     pass
+    meta, wld = get_nz_depth_to_water('gwrc')
+    pass

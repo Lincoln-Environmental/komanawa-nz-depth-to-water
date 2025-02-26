@@ -19,4 +19,4 @@ if __name__ == '__main__':
         outdir = sys.argv[1]
     if outdir is None:
         outdir = Path.home().joinpath('Downloads', 'nz_depth_to_water')
-    export_dtw_to_csv(outdir)
+    export_dtw_to_csv(outdir,  convert_wl_dtw_flag=True, wl_water_elev_flag=True)
