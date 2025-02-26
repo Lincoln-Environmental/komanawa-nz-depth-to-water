@@ -38,7 +38,7 @@ Module Contents
    :return:
 
 
-.. py:function:: export_dtw_to_csv(outdir, source=None)
+.. py:function:: export_dtw_to_csv(outdir, source=None, convert_wl_dtw_flag=False, wl_water_elev_flag=False)
 
    Export the depth to water data to csv files.
 
