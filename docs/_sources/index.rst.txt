@@ -25,8 +25,29 @@ a small repo that holds:
 
 .. include:: supporting_docs/limitations.rst
 
+How to Cite:
+=================
+
+Durney, P., Charlesworth, E., & Matt, D. (2024). Developing a national groundwater level dataset for New Zealand. Journal of Hydrology (New Zealand), 63(1), 51-68.
+
+**BibTeX:**
+
+.. code-block:: bibtex
+
+    @article{durney2024developing,
+          title={Developing a national groundwater level dataset for New Zealand},
+          author={Durney, Patrick and Charlesworth, Evelyn and Matt, Dumont},
+          journal={Journal of Hydrology (New Zealand)},
+          volume={63},
+          number={1},
+          pages={51--68},
+          year={2024},
+          publisher={New Zealand Hydrological Society (Inc.) Wellington, NZ}}
+
+
 Data Access via Python
 ========================
+
 Installation
 ---------------
 
