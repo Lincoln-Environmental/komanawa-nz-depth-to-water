@@ -9,8 +9,9 @@ from komanawa.nz_depth_to_water.get_data import get_nz_depth_to_water, get_water
     get_nc_dataset, get_metadata_string, get_npoint_in_radius, get_distance_to_nearest, export_dtw_to_csv, \
     nz_depth_to_water_dump, copy_geotifs, _get_nc_path, _make_metadata_table_from_nc
 
+# todo can use this to test a higher precision dataset
+bespoke_path = 'nas_mount_point/large_archive/backed/Production_data_products/komanawa-nz_depth_to_water-org/nzdtw_high_precision.nc'
 bespoke_path = None
-bespoke_path = '/home/matt_dumont/nas_mount_point/large_archive/backed/Production_data_products/komanawa-nz_depth_to_water-org/nzdtw_high_precision.nc'
 
 class TestKomanawaNzDepthToWater(unittest.TestCase):
     def test_get_keys(self):
