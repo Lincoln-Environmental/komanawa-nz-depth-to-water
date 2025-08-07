@@ -143,7 +143,7 @@ acceptable_sources = (
     'nzgd', 'tcc', 'ecan')
 
 
-def get_nz_depth_to_water(source=None, convert_wl_dtw_flag=False, wl_water_elev_flag=False) -> (
+def get_nz_depth_to_water(source=None, convert_wl_dtw_flag=False, wl_water_elev_flag=False, ncdataset_path=None) -> (
         pd.DataFrame, pd.DataFrame):
     """
     Get the depth to water data for New Zealand.
@@ -151,9 +151,14 @@ def get_nz_depth_to_water(source=None, convert_wl_dtw_flag=False, wl_water_elev_
     acceptable_sources = (None, 'auk', 'bop', 'gdc', 'hbrc', 'hrc', 'mdc', 'nrc', 'ncc', 'orc', 'src', 'trc', 'tdc', 'wc', 'gwrc', 'wcrc', 'nzgd', 'ecan')
 
     :param source: None (get all data), str (get data from a specific source)
+    :param convert_wl_dtw_flag: bool, if True then convert the wl_dtw_flag to a string.
+    :param wl_water_elev_flag: bool, if True then convert the wl_water_elev_flag to a string.
+    :param ncdataset_path: str, optional, the path to the netcdf dataset to use. if None then uses the default path stored in the repo. This provides a mechanism to access a higher precision dataset, which is available on request (it is too large to host in the github repo).
     :return: metadata: pd.DataFrame, water_level_data: pd.DataFrame
     """
-    with (nc.Dataset(_get_nc_path(), 'r') as ds):
+    if ncdataset_path is None:
+        ncdataset_path = _get_nc_path()
+    with (nc.Dataset(ncdataset_path, 'r') as ds):
         if source is not None:
             assert source in acceptable_sources, f'{source} not in {acceptable_sources}'
             source_mapper = {v: k for k, v in zip(ds['source'].flag_values, ds['source'].flag_meanings.split(' '))}

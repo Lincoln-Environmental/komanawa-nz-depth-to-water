@@ -94,6 +94,21 @@ Contributing and issues/bugs
 
 We have made every attempt to ensure the quality of the data and code in this repository. However, inevitably, there will be issues with the data or code. If you find an issue, please raise an issue on the GitHub repository. If you would like to contribute to the code or data, please fork the repository and submit a pull request.
 
+Higher Precision Data
+========================
+
+The dataset that is held in this repository is a highly compressed version, but the compression is lossy.
+Here all data is stored with a precision of 0.1 m. We have also produced a higher precision version of the dataset, which holds the data with 5 decimal places (0.00001 m).
+This dataset is too large to store in this repository, but is available on request.
+
+To use the higher precision data (once the you have the netcdf file), you can use the following code:
+
+.. code-block:: python
+
+    from komanawa.nz_depth_to_water import get_nz_depth_to_water
+    water_level_data, metadata = get_nz_depth_to_water(ncdataset_path="path/to/higher_precision_data.nc")
+
+
 
 .. include:: metadata.rst
 

@@ -9,6 +9,8 @@ from komanawa.nz_depth_to_water.get_data import get_nz_depth_to_water, get_water
     get_nc_dataset, get_metadata_string, get_npoint_in_radius, get_distance_to_nearest, export_dtw_to_csv, \
     nz_depth_to_water_dump, copy_geotifs, _get_nc_path, _make_metadata_table_from_nc
 
+bespoke_path = None
+bespoke_path = '/home/matt_dumont/nas_mount_point/large_archive/backed/Production_data_products/komanawa-nz_depth_to_water-org/nzdtw_high_precision.nc'
 
 class TestKomanawaNzDepthToWater(unittest.TestCase):
     def test_get_keys(self):
@@ -83,7 +85,7 @@ class TestKomanawaNzDepthToWater(unittest.TestCase):
             'ecan')
         for ac in acceptable_sources:
             print('reading', ac)
-            m, w = get_nz_depth_to_water(ac)
+            m, w = get_nz_depth_to_water(ac, ncdataset_path=bespoke_path)
             assert w.duplicated().sum() == 0, w[w.duplicated(keep=False)].to_string()
             assert m.reset_index().duplicated().sum() == 0, f'{ac}, {m[m.reset_index().duplicated(keep=False)].to_string()}'
             part_meta.append(m)
@@ -94,7 +96,7 @@ class TestKomanawaNzDepthToWater(unittest.TestCase):
             assert wl_set.issubset(meta_set), f'{ac}: {wl_set.symmetric_difference(meta_set)}'
         part_meta = pd.concat(part_meta)
         part_wl = pd.concat(part_wl)
-        meta, wl = get_nz_depth_to_water()
+        meta, wl = get_nz_depth_to_water(ncdataset_path=bespoke_path)
         assert wl.duplicated().sum() == 0, wl[wl.duplicated(keep=False)]
         assert meta.reset_index().duplicated().sum() == 0, meta[meta.reset_index().duplicated(keep=False)]
         meta = meta.sort_index()
@@ -105,8 +107,7 @@ class TestKomanawaNzDepthToWater(unittest.TestCase):
         pd.testing.assert_frame_equal(wl, part_wl)
 
     def test_get_nz_depth_to_water(self):
-
-        meta, wl = get_nz_depth_to_water()
+        meta, wl = get_nz_depth_to_water(ncdataset_path=bespoke_path)
         meta = meta.sort_index()
         wl['wl_date'] = pd.to_datetime(wl['wl_date']).dt.date
         wl = wl.set_index(['wl_site_name', 'wl_date']).sort_index()

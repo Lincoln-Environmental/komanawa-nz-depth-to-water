@@ -22,11 +22,11 @@ time_metadata = {
 
 complib = 'zlib'
 complevel = 9
-max_precision = 1
 
 
-def convert_from_hdf_to_nc(savepath):
-    water_level_data, metadata = _get_nz_depth_to_water()
+
+def convert_from_hdf_to_nc(savepath, max_precision=1, orgdatadir=None):
+    water_level_data, metadata = _get_nz_depth_to_water(orgdatadir)
     water_level_data['site_name'] = water_level_data['site_name'].str.replace(' ', '')
     metadata['site_name'] = metadata['site_name'].str.replace(' ', '')
     metadata = metadata.set_index('site_name')
@@ -98,7 +98,7 @@ def convert_from_hdf_to_nc(savepath):
     check_dataset(water_level_data, metadata)
 
     with nc.Dataset(savepath, 'w') as ds:
-        make_nc_file(ds, water_level_data, metadata)
+        make_nc_file(ds, water_level_data, metadata, max_precision)
 
 
 def check_dataset(water_level_data, metadata):
@@ -129,7 +129,13 @@ def check_dataset(water_level_data, metadata):
     assert t.sum() == 0, f'date has {t.sum()} values before 1900'
 
 
-def make_nc_file(ds, wld, metadata):
+def make_nc_file(ds, wld, metadata, max_precision):
+    if max_precision == 1:
+        itype = np.int16
+        uitype = np.uint16
+    else:
+        itype = np.int32
+        uitype = np.uint32
     assert isinstance(ds, nc.Dataset)
 
     ds.history = f'created by matt_dumont on {pd.Timestamp.now()}'
@@ -164,11 +170,11 @@ def make_nc_file(ds, wld, metadata):
     # create dimensions
     ds.createDimension('site', len(metadata))
     ds.createDimension('reading', len(wld))
-    make_nc_metadata_vars(ds, metadata)
-    make_nc_wld_vars(ds, wld)
+    make_nc_metadata_vars(ds, metadata, max_precision, itype=itype, uitype=uitype)
+    make_nc_wld_vars(ds, wld, max_precision, itype=itype, uitype=uitype)
 
 
-def make_nc_wld_vars(ds, wld):
+def make_nc_wld_vars(ds, wld, max_precision, itype, uitype):
     assert isinstance(ds, nc.Dataset)
 
     flag_vars = {
@@ -211,7 +217,7 @@ def make_nc_wld_vars(ds, wld):
             description='Depth to water from from ground surface e.g. corrected for collar height if available.',
             scale_factor=10 ** -max_precision,
             add_offset=0,
-            missing_value=np.iinfo(np.int16).min,
+            missing_value=np.iinfo(itype).min,
         ),
         'wl_depth_to_water': dict(
             df_key='depth_to_water', long_name='depth to water', units='m',
@@ -220,7 +226,7 @@ def make_nc_wld_vars(ds, wld):
                         'elevation was provided.',
             scale_factor=10 ** -max_precision,
             add_offset=0,
-            missing_value=np.iinfo(np.int16).min,
+            missing_value=np.iinfo(itype).min,
         ),
         'wl_gw_elevation': dict(
             df_key='gw_elevation', long_name='ground water elevation', units='m',
@@ -229,16 +235,16 @@ def make_nc_wld_vars(ds, wld):
             scale_factor=10 ** -max_precision,
             add_offset=0,
             datum='NZVD2016',
-            missing_value=np.iinfo(np.int16).min,
+            missing_value=np.iinfo(itype).min,
         ),
     }
     for key, md in floal_vars.items():
         org_key = md.pop('df_key')
         data = wld[org_key].values / md['scale_factor']
-        assert np.nanmin(data) > np.iinfo(np.int16).min, f'{key} has too small values'
-        assert np.nanmax(data) < np.iinfo(np.int16).max, f'{key} has too large values'
+        assert np.nanmin(data) > np.iinfo(itype).min, f'{key} has too small values'
+        assert np.nanmax(data) < np.iinfo(itype).max, f'{key} has too large values'
         data[np.isnan(data)] = md['missing_value']
-        ds.createVariable(key, np.int16, ('reading',), zlib=True, complevel=complevel)
+        ds.createVariable(key, itype, ('reading',), zlib=True, complevel=complevel)
         ds[key].set_auto_scale(False)
         ds[key][:] = data
         ds[key].setncatts(md)
@@ -253,14 +259,14 @@ def make_nc_wld_vars(ds, wld):
     data = (pd.to_datetime(wld[org_key]) - base_date).dt.days.values
     assert np.nanmin(data) > 0, f'{key} has negative values'
     data[np.isnan(data)] = 0
-    assert data.max() <= np.iinfo(np.uint16).max, f'{key} has too large values'
+    assert data.max() <= np.iinfo(uitype).max, f'{key} has too large values'
     assert data.min() >= 0, f'{key} has negative values'
-    ds.createVariable(key, np.uint16, ('reading',), zlib=True, complevel=complevel, fill_value=0)
+    ds.createVariable(key, uitype, ('reading',), zlib=True, complevel=complevel, fill_value=0)
     ds[key][:] = data
     ds[key].setncatts(md)
 
 
-def make_nc_metadata_vars(ds, metadata):
+def make_nc_metadata_vars(ds, metadata, max_precision, itype, uitype):
     assert isinstance(ds, nc.Dataset)
     metadata = metadata.sort_values('site_name')
 
@@ -321,16 +327,16 @@ def make_nc_metadata_vars(ds, metadata):
         ds[key][:] = metadata[key].values.astype(np.uint32)
         ds[key].setncatts(md)
 
-    def make_gwl_meta(key):
+    def make_gwl_meta(key, max_precision):
         out = dict(long_name=f'{key.split("_")[0]} ground water level', units='m', datum='NZVD2016',
                    description='calculated from this dataset for ease of use',
                    scale_factor=10 ** -max_precision,
                    add_offset=0,
-                   missing_value=np.iinfo(np.int16).min,
+                   missing_value=np.iinfo(itype).min,
                    )
         return out
 
-    elv_float_vars = {e: make_gwl_meta(e) for e in [
+    elv_float_vars = {e: make_gwl_meta(e, max_precision) for e in [
         'mean_gwl',
         'median_gwl',
         'std_gwl',
@@ -340,10 +346,10 @@ def make_nc_metadata_vars(ds, metadata):
     ]}
     for key, md in elv_float_vars.items():
         data = metadata[key].astype(float).values / md['scale_factor']
-        assert np.nanmin(data) > np.iinfo(np.int16).min, f'{key} has too small values'
-        assert np.nanmax(data) < np.iinfo(np.int16).max, f'{key} has too large values'
-        data[np.isnan(data)] = np.iinfo(np.int16).min
-        ds.createVariable(key, np.int16, ('site',), zlib=True, complevel=complevel)
+        assert np.nanmin(data) > np.iinfo(itype).min, f'{key} has too small values'
+        assert np.nanmax(data) < np.iinfo(itype).max, f'{key} has too large values'
+        data[np.isnan(data)] = np.iinfo(itype).min
+        ds.createVariable(key, itype, ('site',), zlib=True, complevel=complevel)
         ds[key].set_auto_scale(False)
         ds[key][:] = data
         ds[key].setncatts(md)
@@ -377,7 +383,7 @@ def make_nc_metadata_vars(ds, metadata):
                         'measuring point is at the ground surface.',
             scale_factor=10 ** -max_precision,
             add_offset=0,
-            missing_value=np.iinfo(np.int16).min,
+            missing_value=np.iinfo(itype).min,
         ),
         'rl_elevation': dict(
             long_name='reference level elevation', units='m',
@@ -385,7 +391,7 @@ def make_nc_metadata_vars(ds, metadata):
             datum='NZVD2016',
             scale_factor=10 ** -max_precision,
             add_offset=0,
-            missing_value=np.iinfo(np.int16).min,
+            missing_value=np.iinfo(itype).min,
         ),
         'top_topscreen': dict(
             long_name='top of top screen', units='m',
@@ -402,10 +408,10 @@ def make_nc_metadata_vars(ds, metadata):
     for key, md in other_float_vars.items():
         data = metadata[key].astype(float).values
         data = data / md['scale_factor']
-        use_dtype = md.pop('dtype', np.int16)
+        use_dtype = md.pop('dtype', itype)
         assert np.nanmin(data) > np.iinfo(use_dtype).min, f'{key} has too small values'
         assert np.nanmax(data) < np.iinfo(
-            use_dtype).max, f'{key} has too large values ({(data > np.iinfo(np.int16).max - 2).sum()}), {np.nanmax(data)}'
+            use_dtype).max, f'{key} has too large values ({(data > np.iinfo(itype).max - 2).sum()}), {np.nanmax(data)}'
         data[np.isnan(data)] = np.iinfo(use_dtype).min
         ds.createVariable(key, use_dtype, ('site',), zlib=True, complevel=complevel)
         ds[key].set_auto_scale(False)
@@ -418,7 +424,7 @@ def make_nc_metadata_vars(ds, metadata):
                    convention='positive values (+) are below the ground surface, negative values (-) are above the ground surface (artesian)',
                    scale_factor=10 ** -max_precision,
                    add_offset=0,
-                   missing_value=np.iinfo(np.int16).min,
+                   missing_value=np.iinfo(itype).min,
 
                    )
         return out
@@ -432,13 +438,13 @@ def make_nc_metadata_vars(ds, metadata):
     ]}
     for key, md in dtw_float_vars.items():
         data = metadata[key].astype(float).values / md['scale_factor']
-        assert np.nanmin(data) > np.iinfo(np.int16).min, f'{key} has too small values'
-        assert np.nanmax(data) < np.iinfo(np.int16).max, f'{key} has too large values'
-        data[np.isnan(data)] = np.iinfo(np.int16).min
-        var = ds.createVariable(key, np.int16, ('site',), zlib=True, complevel=complevel)
+        assert np.nanmin(data) > np.iinfo(itype).min, f'{key} has too small values'
+        assert np.nanmax(data) < np.iinfo(itype).max, f'{key} has too large values'
+        data[np.isnan(data)] = np.iinfo(itype).min
+        var = ds.createVariable(key, itype, ('site',), zlib=True, complevel=complevel)
         var.set_auto_scale(False)
 
-        ds[key][:] = data.astype(np.int16)
+        ds[key][:] = data.astype(itype)
         ds[key].setncatts(md)
 
     kill_vars = [
@@ -464,16 +470,26 @@ def make_nc_metadata_vars(ds, metadata):
         data = (pd.to_datetime(metadata[key]) - base_date).dt.days.values
         assert np.nanmin(data) > 0, f'{key} has negative values'
         data[np.isnan(data)] = 0
-        assert data.max() <= np.iinfo(np.uint16).max, f'{key} has too large values'
+        assert data.max() <= np.iinfo(uitype).max, f'{key} has too large values'
         assert data.min() >= 0, f'{key} has negative values'
-        ds.createVariable(key, np.uint16, ('site',), zlib=True, complevel=complevel, fill_value=0)
+        ds.createVariable(key, uitype, ('site',), zlib=True, complevel=complevel, fill_value=0)
         ds[key][:] = data
         ds[key].setncatts(md)
 
 
 if (__name__ == '__main__'):
-    from komanawa.nz_depth_to_water.get_data import _get_nc_path
-    convert_from_hdf_to_nc(_get_nc_path(True))
-    from komanawa.nz_depth_to_water.get_data import _make_metadata_table_from_nc
+    org=False
+    if org:
+        from komanawa.nz_depth_to_water.get_data import _get_nc_path
+        convert_from_hdf_to_nc(_get_nc_path(True))
+        from komanawa.nz_depth_to_water.get_data import _make_metadata_table_from_nc
 
-    _make_metadata_table_from_nc(proj_root.parents[1].joinpath('docs_build/metadata.rst'))
+        _make_metadata_table_from_nc(proj_root.parents[1].joinpath('docs_build/metadata.rst'))
+
+    high_precision=True
+    if high_precision:
+        from komanawa.kslcore import KslEnv
+        org_data_dir=KslEnv.large_archive.joinpath('backed/Production_data_products/komanawa-nz_depth_to_water-org')
+        convert_from_hdf_to_nc(org_data_dir.joinpath('nzdtw_high_precision.nc'), max_precision=5,
+                               orgdatadir=org_data_dir)
+

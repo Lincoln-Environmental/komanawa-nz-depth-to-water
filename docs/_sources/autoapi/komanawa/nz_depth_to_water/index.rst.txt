@@ -95,13 +95,16 @@ Package Contents
    :return: ndatapoints, mx, my (np.ndarray, np.ndarray, np.ndarray) gridded output
 
 
-.. py:function:: get_nz_depth_to_water(source=None, convert_wl_dtw_flag=False, wl_water_elev_flag=False) -> (pandas.DataFrame, pandas.DataFrame)
+.. py:function:: get_nz_depth_to_water(source=None, convert_wl_dtw_flag=False, wl_water_elev_flag=False, ncdataset_path=None) -> (pandas.DataFrame, pandas.DataFrame)
 
    Get the depth to water data for New Zealand.
 
    acceptable_sources = (None, 'auk', 'bop', 'gdc', 'hbrc', 'hrc', 'mdc', 'nrc', 'ncc', 'orc', 'src', 'trc', 'tdc', 'wc', 'gwrc', 'wcrc', 'nzgd', 'ecan')
 
    :param source: None (get all data), str (get data from a specific source)
+   :param convert_wl_dtw_flag: bool, if True then convert the wl_dtw_flag to a string.
+   :param wl_water_elev_flag: bool, if True then convert the wl_water_elev_flag to a string.
+   :param ncdataset_path: str, optional, the path to the netcdf dataset to use. if None then uses the default path stored in the repo. This provides a mechanism to access a higher precision dataset, which is available on request (it is too large to host in the github repo).
    :return: metadata: pd.DataFrame, water_level_data: pd.DataFrame
 
 

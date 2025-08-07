@@ -95,14 +95,14 @@ def _convert_from_int_to_raw(data, precision):
     return out
 
 
-def _get_nz_depth_to_water():
+def _get_nz_depth_to_water(datadir=None):
     """
     load the depth to water data and metadata and return them as pandas DataFrames.
 
     :return: water_level_data, metadata
     """
-
-    datadir = Path(__file__).parent.joinpath('data')
+    if datadir is None:
+        datadir = Path(__file__).parent.joinpath('data')
     assert datadir.exists(), f'{datadir} does not exist. should not get here'
     wl_paths = datadir.glob('depth_to_water_*.hdf')
     water_level_data = []

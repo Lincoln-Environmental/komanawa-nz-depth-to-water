@@ -528,12 +528,17 @@
 
 <dl class="py function">
 <dt class="sig sig-object py" id="komanawa.nz_depth_to_water.get_nz_depth_to_water">
-<span class="sig-name descname"><span class="pre">get_nz_depth_to_water</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">convert_wl_dtw_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wl_water_elev_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/komanawa/nz_depth_to_water/get_data.html#get_nz_depth_to_water"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.nz_depth_to_water.get_nz_depth_to_water" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_nz_depth_to_water</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">convert_wl_dtw_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wl_water_elev_flag</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ncdataset_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/komanawa/nz_depth_to_water/get_data.html#get_nz_depth_to_water"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.nz_depth_to_water.get_nz_depth_to_water" title="Link to this definition">#</a></dt>
 <dd><p>Get the depth to water data for New Zealand.</p>
 <p>acceptable_sources = (None, ‘auk’, ‘bop’, ‘gdc’, ‘hbrc’, ‘hrc’, ‘mdc’, ‘nrc’, ‘ncc’, ‘orc’, ‘src’, ‘trc’, ‘tdc’, ‘wc’, ‘gwrc’, ‘wcrc’, ‘nzgd’, ‘ecan’)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>source</strong> – None (get all data), str (get data from a specific source)</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source</strong> – None (get all data), str (get data from a specific source)</p></li>
+<li><p><strong>convert_wl_dtw_flag</strong> – bool, if True then convert the wl_dtw_flag to a string.</p></li>
+<li><p><strong>wl_water_elev_flag</strong> – bool, if True then convert the wl_water_elev_flag to a string.</p></li>
+<li><p><strong>ncdataset_path</strong> – str, optional, the path to the netcdf dataset to use. if None then uses the default path stored in the repo. This provides a mechanism to access a higher precision dataset, which is available on request (it is too large to host in the github repo).</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>metadata: pd.DataFrame, water_level_data: pd.DataFrame</p>
