@@ -55,7 +55,7 @@ Installation
 
 .. code-block:: bash
 
-        pip install git+https://github.com/Komanawa-Solutions-Ltd/komanawa-nz-depth-to-water.git
+        pip install git+https://github.com/Komanawa/komanawa-nz-depth-to-water.git
 
 **Option 2 - clone the repository**
 
