@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import shutil
-from komanawa.nz_depth_to_water.density_grid import DensityGrid
+from density_grid import DensityGrid
 import netCDF4 as nc
 
 
@@ -277,6 +277,93 @@ def copy_geotifs(outdir):
     print(f'Copied geotifs to {outdir}')
 
 
+def continuous_sites(wld):
+    """
+    Get continuous sites with ≥100 records and >95% of gaps < 3 days,
+    interpolate gaps ≤2 days, and flag interpolated values.
+    :param wld: pd.DataFrame with columns 'wl_site_name', 'wl_date', and numeric water‐level cols
+    :return: pd.DataFrame with daily rows, interpolations filled and flagged
+    """
+    # 1. Copy, parse dates, drop invalid rows, sort
+    wld = wld.copy()
+    wld['wl_date'] = pd.to_datetime(wld['wl_date'], errors='coerce')
+    numeric_cols = wld.select_dtypes(include='number').columns.tolist()
+    df = wld.dropna(subset=['wl_date'] + numeric_cols)
+    df = df.sort_values(['wl_site_name', 'wl_date'])
+
+    # 2. Compute inter‐observation gaps and a small‐gap flag
+    df['gap'] = df.groupby('wl_site_name')['wl_date'].diff().dt.days.fillna(0)
+    df['small_gap'] = df['gap'] < 3
+
+    # 3. Aggregate to find valid sites
+    stats = df.groupby('wl_site_name').agg(
+        count=('wl_date', 'size'),
+        small_count=('small_gap', 'sum')
+    )
+    stats['pct_small_gaps'] = stats['small_count'] / stats['count']
+    valid_sites = stats.loc[
+        (stats['count'] >= 100) & (stats['pct_small_gaps'] > 0.95)
+    ].index
+
+    # 4. Upsample to daily frequency per site
+    df = df.set_index(['wl_site_name', 'wl_date'])
+    daily = (
+        df[numeric_cols]
+        .groupby(level=0)
+        .resample('D', level=1)
+        .first()
+        .reset_index()
+    )
+
+    # 5. Mark which rows were original (non‐NaN)
+    daily['is_original'] = ~daily[numeric_cols].isna().any(axis=1)
+
+    # 6. Interpolate only for valid sites, limit=2 days
+    mask = daily['wl_site_name'].isin(valid_sites)
+    daily.loc[mask, numeric_cols] = (
+        daily.loc[mask, numeric_cols]
+        .interpolate(limit=2)
+    )
+
+    # 7. Flag interpolated rows
+    daily['interpolated_flag'] = (
+        (~daily['is_original']) &
+        daily[numeric_cols].notna().all(axis=1)
+    )
+
+    # 8. Final cleanup & return
+    return (
+        daily
+        .drop(columns=['gap', 'small_gap', 'is_original'], errors='ignore')
+        .sort_values(['wl_site_name', 'wl_date'])
+        .reset_index(drop=True)
+    )
+
 if __name__ == '__main__':
-    meta, wld = get_nz_depth_to_water('gwrc')
+    home = Path.home()
+    database = home.joinpath('mnt', 'unbacked', 'national_data', 'groundwater_level_data', 'nzdtw_high_precision_corrected_to_lidar.nc')
+    meta, wld = get_nz_depth_to_water(ncdataset_path=database)
+    # export metadata to csv
+    metadata_path = home.joinpath('mnt', 'unbacked', 'national_data', 'groundwater_level_data', 'gwl_meta_data_liad_corrected.csv')
+    meta.to_csv(metadata_path)
+    wld_path = home.joinpath('mnt', 'unbacked', 'national_data', 'groundwater_level_data', 'water_level_data_lidar_corrected.csv')
+    wld.to_csv(wld_path)
+
+    corrected = pd.read_csv(home.joinpath('Downloads', 'water_level_data_corrected.csv'))
+    store = pd.read_csv(home.joinpath('mnt', 'unbacked', 'national_data', 'groundwater_level_data', 'water_level_data_lidar_corrected.csv'))
+    check = pd.concat([corrected, store[['wl_site_name', 'wl_gw_elevation']]], axis=1)
+     # sort ceck by corrected to lidar
+    check = check.sort_values(by='corrected_to_national_lidar')
+
+    raise NotImplementedError('temporary stop')
+    max = wld['wl_depth_to_water_cor'].max()
+    expanded_set = continuous_sites(wld)
+    expanded_set = expanded_set.dropna()
+    expanded_set.to_csv(home.joinpath('mnt', 'unbacked', 'national_data', 'groundwater_level_data', 'temporally_expanded_sites.csv'))
+    # export wld
+
+
+
+
+    # export metadata to csv
     pass
