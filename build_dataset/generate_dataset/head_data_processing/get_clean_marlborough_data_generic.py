@@ -9,6 +9,10 @@ This script cleans and processes the Marlborough GWL data
 
 import numpy as np
 import pandas as pd
+import rasterio
+from scipy.interpolate import RegularGridInterpolator
+from rasterio.warp import calculate_default_transform, reproject, Resampling
+from pathlib import Path
 
 from build_dataset.generate_dataset.head_data_processing.data_processing_functions import (find_overlapping_files,
                                                                                            copy_with_prompt, \
@@ -52,7 +56,8 @@ def _get_marlborough_tethys_data(meta_data_requirements):
     tethys_metadata_dtw_24h = tethys_metadata['/Marlborough District Council_groundwater_depth_24H_metadata']
 
     tethys_data_dtw_24h = tethys_data['/Marlborough District Council_groundwater_depth_24H']
-    tethys_data_dtw_24h['depth_to_water'] = tethys_data_dtw_24h['groundwater_depth']
+    # keynote tethys is gw elevation not depth to water
+    tethys_data_dtw_24h['gw_elevation'] = tethys_data_dtw_24h['groundwater_depth']
 
     tethys_data_dtw = tethys_data_dtw_24h[needed_gw_columns]
     tethys_data_dtw['data_source'] = "tethys"
@@ -263,6 +268,24 @@ def output(local_paths, meta_data_requirements, recalc=False):
                                         col not in cols_to_keep and col != 'other'],
                                inplace=True)
 
+        # keynote nelson 1955 vd not nzvd2016 need wls and depths to be converted
+        xy_list = combined_metadata[['nztm_x', 'nztm_y']].values.tolist()
+        path_coversion = Path('build_dataset/generate_dataset/head_data_processing/nelson-1955-to-nzvd2016-conversion-raster/nelson-1955-to-nzvd2016-conversion-raster.tif')
+        vals = get_offsets_from_grid(path_coversion, xy_list)
+        combined_metadata['datum_offset'] = vals
+        list_of_pars= ['mean_gwl','median_gwl','max_gwl','min_gwl','mean_dtw','median_dtw','max_dtw',
+                      'min_dtw']
+        for par in list_of_pars:
+            if par in combined_metadata.columns:
+                combined_metadata[par] = combined_metadata[par] - combined_metadata['datum_offset']
+
+        combined_water_data = combined_water_data.merge(combined_metadata['datum_offset'], on='site_name', how='left')
+        combined_water_data['gw_elevation'] = combined_water_data['gw_elevation'] - combined_water_data['datum_offset']
+        combined_water_data['depth_to_water'] = combined_water_data['depth_to_water'] + combined_water_data['datum_offset']
+        combined_water_data.drop(columns=['datum_offset'], inplace=True)
+        combined_metadata.drop(columns=['datum_offset'], inplace=True)
+
+
         renew_hdf5_store(old_path=local_paths['save_path'], store_key=local_paths['wl_store_key'],
                          new_data=combined_water_data)
 
@@ -314,6 +337,51 @@ def _get_folder_and_local_paths(source_dir, local_dir, redownload=False):
 
     return local_paths
 
+
+def get_offsets_from_grid(tiff_path, coords_list):
+    """Get offsets for a list of NZTM2000 [easting, northing] pairs after reprojecting grid to EPSG:2193."""
+    dst_crs = 'EPSG:2193'
+
+    with rasterio.open(tiff_path) as src:
+        transform, width, height = calculate_default_transform(
+            src.crs, dst_crs, src.width, src.height, *src.bounds)
+
+        kwargs = src.meta.copy()
+        kwargs.update({
+            'crs': dst_crs,
+            'transform': transform,
+            'width': width,
+            'height': height
+        })
+
+        # Reproject in memory
+        data_reproj = np.empty((height, width), dtype=src.dtypes[0])
+        reproject(
+            source=rasterio.band(src, 1),
+            destination=data_reproj,
+            src_transform=src.transform,
+            src_crs=src.crs,
+            dst_transform=transform,
+            dst_crs=dst_crs,
+            resampling=Resampling.bilinear)
+
+        # Create easting/northing grids
+        eastings = np.linspace(transform.c, transform.c + transform.a * width, width)
+        northings = np.linspace(transform.f, transform.f + transform.e * height, height)  # northings decrease N to S
+
+        # Create interpolator (bilinear)
+        interpolator = RegularGridInterpolator((northings, eastings), data_reproj, method='linear', bounds_error=False,
+                                               fill_value=None)
+
+        offsets = []
+        for easting, northing in coords_list:
+            point = np.array([[northing, easting]])  # Note: interpolator expects (northing, easting) order
+            offset = interpolator(point)[0]
+            if np.isnan(offset):
+                offset = -0.329  # Fallback to mean offset if outside grid
+            offsets.append(offset)
+
+        return offsets
 
 def get_mdc_data(recalc=False, redownload=False):
     local_paths = _get_folder_and_local_paths(source_dir=groundwater_data.joinpath('gwl_marlborough'),

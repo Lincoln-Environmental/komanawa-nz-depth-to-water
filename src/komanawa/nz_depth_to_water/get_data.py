@@ -343,11 +343,13 @@ if __name__ == '__main__':
     home = Path.home()
     database = home.joinpath('mnt', 'unbacked', 'national_data', 'groundwater_level_data', 'nzdtw_high_precision_corrected_to_lidar.nc')
     meta, wld = get_nz_depth_to_water(ncdataset_path=database)
+    # meta, wld = get_nz_depth_to_water(source= 'mdc', ncdataset_path=home.joinpath('mnt', 'unbacked', 'national_data', 'groundwater_level_data','nzdtw_high_precision.nc'))
     # export metadata to csv
-    metadata_path = home.joinpath('mnt', 'unbacked', 'national_data', 'groundwater_level_data', 'gwl_meta_data_liad_corrected.csv')
-    meta.to_csv(metadata_path)
+    water_level_mdc = wld[wld['wl_site_name'].str.contains('mdc', case=False, na=False)]
+    metadata_path = home.joinpath('mnt', 'unbacked', 'national_data', 'groundwater_level_data', 'gwl_meta_data_lidar_corrected.csv')
+    # meta.to_csv(metadata_path)
     wld_path = home.joinpath('mnt', 'unbacked', 'national_data', 'groundwater_level_data', 'water_level_data_lidar_corrected.csv')
-    wld.to_csv(wld_path)
+    # wld.to_csv(wld_path)
 
     corrected = pd.read_csv(home.joinpath('Downloads', 'water_level_data_corrected.csv'))
     store = pd.read_csv(home.joinpath('mnt', 'unbacked', 'national_data', 'groundwater_level_data', 'water_level_data_lidar_corrected.csv'))
@@ -355,7 +357,7 @@ if __name__ == '__main__':
      # sort ceck by corrected to lidar
     check = check.sort_values(by='corrected_to_national_lidar')
 
-    raise NotImplementedError('temporary stop')
+    # raise NotImplementedError('temporary stop')
     max = wld['wl_depth_to_water_cor'].max()
     expanded_set = continuous_sites(wld)
     expanded_set = expanded_set.dropna()
